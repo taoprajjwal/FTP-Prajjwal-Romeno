@@ -1,5 +1,10 @@
+all: FTPClient FTPServer
+
+FTPClient: FTPClient.c
+	gcc -w FTPClient.c -o FTPClient
+
 FTPServer: FTPServer.c
-	gcc FTPServer.c -o FTPServer.o
+	gcc -w FTPServer.c -o FTPServer
 
 clean:
-	rm *.o
+	rm *.o FTPclient FTPServer
