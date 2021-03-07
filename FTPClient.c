@@ -15,7 +15,13 @@
 
 int main(int argc, char *argv[])
 {
-    printf("%s %s \n", argv[1], argv[2]);
+    printf("%s %s \n", argv[1], argv[2]); // port number is second argv 2
+    int srv_socket = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in srv_addr;                  //structure to hold the type, address and port
+    memset(&srv_addr, 0, sizeof(srv_addr));       //set the Fill the structure with 0s
+    srv_addr.sin_family = AF_INET;                //Address family
+    srv_addr.sin_port = htons(atoi(argv[2]));     //Port Number - check if arg exists or display error msg
+    srv_addr.sin_addr.s_addr = htonl(INADDR_ANY); // intead of all local onterfaces you can also specify a single enterface e.g. inet_addr("127.0.0.1") for loopback address
 
     while (1)
     {
