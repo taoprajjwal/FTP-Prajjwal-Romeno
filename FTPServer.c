@@ -304,6 +304,12 @@ int main(int argc, char * argv[]){
                                     strcpy(response,"set USER first");
                                     printf("GIVE USERNAME FIRST \n");
                                 } 
+                                
+                                if(send(clients[i].fd,response,strlen(response),0)<1){
+                                        perror("Error in send");
+                                        return -1;
+                                }
+
                             }
                         }
                     }
