@@ -21,10 +21,11 @@
 
 
 
-typedef struct clients{
+typedef struct{
     int fd;
     int user_inited;
     int authenticated;
+    int user_id;
     char name[USERNAME_LIMIT];
     char pass[PASSWORD_LIMIT];
 } client;
@@ -99,19 +100,23 @@ int check_username(user* client_list,char * username){
         }        
     }
     
-    return 0;       
+    return -1;       
 
 }
 
 
-void create_connection(client * client_list,int fd){
+int create_connection(client * client_list,int fd){
+
+    printf("New fd: %d \n",fd);
 
     for (int i=0;i<MAX_CONNECTIONS;i++){
-        if (client_list[i].fd==-1){
+        if (client_list[i].fd ==-1){
             client_list[i].fd=fd;
+            return 1;
         }
     }
-    printf("Cannot add fd: %d; connection is full \n",fd);
+
+    return -1;
 }
 
 
@@ -153,7 +158,22 @@ int main(int argc, char * argv[]){
         return -1;
     };
 
-    client clients[MAX_CONNECTIONS]={{-1,0, 0, "",""}};
+    client clients[MAX_CONNECTIONS];
+
+    for (int i=0; i< MAX_CONNECTIONS; i++){
+        clients[i].fd=-1;
+        clients[i].user_inited=0;
+        clients[i].authenticated=0;
+        clients[i].user_id=-1;
+        strcpy(clients[i].name,"");
+        strcpy(clients[i].pass,"");
+    }
+
+
+    for (int i=0;i<MAX_CONNECTIONS;i++){
+        printf("%d %d \n",clients[i].fd,clients[i].authenticated);
+    }
+
     fd_set socks;
     FD_ZERO(&socks);
     FD_SET(socket_sd,&socks);
@@ -164,7 +184,7 @@ int main(int argc, char * argv[]){
     
 
     while (1){
-        int readsocks=select(high_sock+1,&socks,NULL,NULL,&timeout);
+        int readsocks=select(high_sock+1,&socks,NULL,NULL,NULL);
         
         if (readsocks<0){
             perror("SELECT FAILED");
@@ -181,7 +201,7 @@ int main(int argc, char * argv[]){
                 int new_fd;
                 new_fd=accept(socket_sd,NULL,NULL);
                 
-                if (accept<0){
+                if (new_fd<0){
                     perror("Accept failed");
                     return -1;
                 }
@@ -192,22 +212,41 @@ int main(int argc, char * argv[]){
                     high_sock=new_fd;
                 }
 
-                create_connection(clients,new_fd);
+                if (create_connection(clients,new_fd) <0){
+                    printf("Cannot add fd: %d; connection is full \n",new_fd);
+                }
+
             }
-        
-            else{
+
+                
+                for (int i=0;i<MAX_CONNECTIONS;i++){
+                    printf("%d %d \n",clients[i].fd,clients[i].authenticated);
+                }
 
                 for (int i=0;i<MAX_CONNECTIONS;i++){
 
                     if (FD_ISSET(clients[i].fd,&socks)){
                         
                         char buffer[COMMAND_LIMIT];
+                        memset(buffer,0,sizeof(buffer));
 
                         int buffer_size;
-                        buffer_size=read(clients[i].fd,buffer,buffer_size);
+                        buffer_size=read(clients[i].fd,buffer,sizeof(buffer));
+
+
+                        printf("%d  %s \n", buffer_size, buffer);
+
 
                         if (buffer_size<0){
                             perror("Error reading from the socket");
+                        }
+
+                        else if(buffer_size==0){
+                            //TODO: REMOVE THE FD FROM THE FDSET AND the client struct 
+                            printf("Removing %d from the client_list \n", clients[i].fd);
+                            FD_CLR(clients[i].fd,&socks);
+                            clients[i].fd=-1;
+                            close(clients[i].fd);
                         }
 
                         else{
@@ -217,40 +256,60 @@ int main(int argc, char * argv[]){
 
                             if (strcmp(command,"USER")==0){
                                 
-                                int userid=check_username(users,param);
-                                if (userid<0){
-                                    printf("USERNAME DOES NOT EXIST SEND AGAIN");
-                                }
-                                else{
+                                char response[100];
 
+                                int userid=check_username(users,param);
+
+                                if (userid<0){
+                                    printf("USERNAME DOES NOT EXIST SEND AGAIN \n");
+                                    strcpy(response,"Username does not exist \n");
+                                }
+
+                                else{
+                                    printf("User %s initatied \n" ,param);
                                     clients[i].user_inited=1;
                                     strcpy(clients[i].name,param);
                                     strcpy(clients[i].pass,users[userid].password);
+
+                                    strcpy(response,"Username OK, password required\n");
+                                }
+                                
+                                
+                                if(send(clients[i].fd,response,strlen(response),0)<1){
+                                        perror("Error in send");
+                                        return -1;
                                 }
 
                                 
                             }
 
                             if (strcmp(command,"PASS")==0){
+
+                                char response[100];
+
+
                                 if (clients[i].user_inited==1){
+
                                     if (strcmp(clients[i].pass,param)==0){
                                         clients[i].authenticated=1;
+                                        strcpy(response,"Authentication complete \n");
                                     }
 
                                     else{
-
-                                        printf("BAD AUTHENTICATION");
+                                        strcpy(response,"wrong password \n ");
+                                        printf("BAD AUTHENTICATION \n");
                                     }
                                 }
                                 else{
-                                    printf("GIVE USERNAME FIRST");
-                                }
+                                    strcpy(response,"set USER first");
+                                    printf("GIVE USERNAME FIRST \n");
+                                } 
                             }
                         }
                     }
                 }
             
-            }
+            
         }
     }
 }
