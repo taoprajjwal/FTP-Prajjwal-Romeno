@@ -39,8 +39,12 @@ int main(int argc, char *argv[])
         if (strcmp(currentUserInputArray[0], "USER") == 0 && currentUserInputArray[1][0] != '\0')
         {
             printf("Username command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
+            fflush(stdout);
             char response[10000]; //string to hold the server esponse
-
+            char *commandStringP1 = strcat(currentUserInputArray[0], " ");
+            char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
+            printf("Command sent -> %s \n", commandString);
+            send(srv_socket, commandString, strlen(commandString), 0);
             while (recv(srv_socket, response, sizeof(response), 0) > 0)
             {
                 printf("%s", response);
