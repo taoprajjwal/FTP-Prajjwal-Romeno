@@ -262,7 +262,7 @@ int main(int argc, char * argv[]){
 
                                 if (userid<0){
                                     printf("USERNAME DOES NOT EXIST SEND AGAIN \n");
-                                    strcpy(response,"Username does not exist \n");
+                                    strcpy(response,"a 430\n");
                                 }
 
                                 else{
@@ -271,7 +271,7 @@ int main(int argc, char * argv[]){
                                     strcpy(clients[i].name,param);
                                     strcpy(clients[i].pass,users[userid].password);
 
-                                    strcpy(response,"Username OK, password required\n");
+                                    strcpy(response,"331\n" );
                                 }
                                 
                                 
@@ -292,19 +292,19 @@ int main(int argc, char * argv[]){
 
                                     if (strcmp(clients[i].pass,param)==0){
                                         clients[i].authenticated=1;
-                                        strcpy(response,"Authentication complete \n");
+                                        strcpy(response,"230\n");
                                     }
 
                                     else{
-                                        strcpy(response,"wrong password \n ");
-                                        printf("BAD AUTHENTICATION \n");
+                                        strcpy(response,"430\n");
+                                        printf("Wrong Password \n");
                                     }
                                 }
                                 else{
-                                    strcpy(response,"set USER first");
+                                    strcpy(response,"503\n");
                                     printf("GIVE USERNAME FIRST \n");
                                 } 
-                                
+
                                 if(send(clients[i].fd,response,strlen(response),0)<1){
                                         perror("Error in send");
                                         return -1;
