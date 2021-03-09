@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <sys/select.h> 
 #include <sys/time.h>
+#include<dirent.h>
 
 
 
@@ -18,7 +19,9 @@
 #define PASSWORD_LIMIT 20
 #define INPUT_FILE "users.txt"
 #define COMMAND_LIMIT 100
-
+#define PATH_MAX 512
+#define DEFAULT_PATH "/home/cn/"
+#define MAX_RESPONSE 4096 
 
 
 typedef struct{
@@ -28,6 +31,7 @@ typedef struct{
     int user_id;
     char name[USERNAME_LIMIT];
     char pass[PASSWORD_LIMIT];
+	char pwd[PATH_MAX];
 } client;
 
 
@@ -131,191 +135,250 @@ int get_connection_index(client * client_list, int fd){
 
 }
 
-int main(int argc, char * argv[]){
+int main(int argc, char * argv[]) {
 
-    int socket_sd,port,high_sock;
-    char * addr;
-    struct timeval timeout;
+	int socket_sd, port, high_sock;
+	char * addr;
+	struct timeval timeout;
 
-    if (argc<3){
-        printf("IP Address and Port not given \n");
-        return -1;
-    }
+	if (argc < 3) {
+		printf("IP Address and Port not given \n");
+		return -1;
+	}
 
-    addr=argv[1];
-    port=atoi(argv[2]);
+	addr = argv[1];
+	port = atoi(argv[2]);
 
-    user users[N_USERS];
-    initiaize_users(users,INPUT_FILE);
-
-
-    for (int i=0;i<N_USERS;i++){
-        printf("%s %s \n" ,users[i].username,users[i].password);
-    }
+	user users[N_USERS];
+	initiaize_users(users, INPUT_FILE);
 
 
-    if (create_bind_socket(&socket_sd,&port,addr)<0){
-        return -1;
-    };
-
-    client clients[MAX_CONNECTIONS];
-
-    for (int i=0; i< MAX_CONNECTIONS; i++){
-        clients[i].fd=-1;
-        clients[i].user_inited=0;
-        clients[i].authenticated=0;
-        clients[i].user_id=-1;
-        strcpy(clients[i].name,"");
-        strcpy(clients[i].pass,"");
-    }
+	for (int i = 0; i < N_USERS; i++) {
+		printf("%s %s \n", users[i].username, users[i].password);
+	}
 
 
-    for (int i=0;i<MAX_CONNECTIONS;i++){
-        printf("%d %d \n",clients[i].fd,clients[i].authenticated);
-    }
+	if (create_bind_socket(&socket_sd, &port, addr) < 0) {
+		return -1;
+	};
 
-    fd_set socks;
-    FD_ZERO(&socks);
-    FD_SET(socket_sd,&socks);
-    high_sock=socket_sd;
-    timeout.tv_sec=1;
-    timeout.tv_usec=0;
+	client clients[MAX_CONNECTIONS];
 
-    
-
-    while (1){
-        int readsocks=select(high_sock+1,&socks,NULL,NULL,NULL);
-        
-        if (readsocks<0){
-            perror("SELECT FAILED");
-            return -1;
-        }
-        
-        if (readsocks==0){
-        }
-
-        else{
-
-            if (FD_ISSET(socket_sd,&socks)){
-
-                int new_fd;
-                new_fd=accept(socket_sd,NULL,NULL);
-                
-                if (new_fd<0){
-                    perror("Accept failed");
-                    return -1;
-                }
-
-                FD_SET(new_fd,&socks);
-
-                if (new_fd>high_sock){
-                    high_sock=new_fd;
-                }
-
-                if (create_connection(clients,new_fd) <0){
-                    printf("Cannot add fd: %d; connection is full \n",new_fd);
-                }
-
-            }
-
-                
-                for (int i=0;i<MAX_CONNECTIONS;i++){
-                    printf("%d %d \n",clients[i].fd,clients[i].authenticated);
-                }
-
-                for (int i=0;i<MAX_CONNECTIONS;i++){
-
-                    if (FD_ISSET(clients[i].fd,&socks)){
-                        
-                        char buffer[COMMAND_LIMIT];
-                        memset(buffer,0,sizeof(buffer));
-
-                        int buffer_size;
-                        buffer_size=read(clients[i].fd,buffer,sizeof(buffer));
+	for (int i = 0; i < MAX_CONNECTIONS; i++) {
+		clients[i].fd = -1;
+		clients[i].user_inited = 0;
+		clients[i].authenticated = 0;
+		clients[i].user_id = -1;
+		strcpy(clients[i].name, "");
+		strcpy(clients[i].pass, "");
+		strcpy(clients[i].pwd, DEFAULT_PATH);
+	}
 
 
-                        printf("%d  %s \n", buffer_size, buffer);
+	for (int i = 0; i < MAX_CONNECTIONS; i++) {
+		printf("%d %d \n", clients[i].fd, clients[i].authenticated);
+	}
+
+	fd_set socks;
+	FD_ZERO(&socks);
+	FD_SET(socket_sd, &socks);
+	high_sock = socket_sd;
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
 
 
-                        if (buffer_size<0){
-                            perror("Error reading from the socket");
-                        }
 
-                        else if(buffer_size==0){
-                            //TODO: REMOVE THE FD FROM THE FDSET AND the client struct 
-                            printf("Removing %d from the client_list \n", clients[i].fd);
-                            FD_CLR(clients[i].fd,&socks);
-                            clients[i].fd=-1;
-                            close(clients[i].fd);
-                        }
+	while (1) {
+		int readsocks = select(high_sock + 1, &socks, NULL, NULL, NULL);
 
-                        else{
-                            char command[COMMAND_LIMIT];
-                            char param[COMMAND_LIMIT];
-                            sscanf(buffer,"%s %s",command,param);
+		if (readsocks < 0) {
+			perror("SELECT FAILED");
+			return -1;
+		}
 
-                            if (strcmp(command,"USER")==0){
-                                
-                                char response[100];
+		if (readsocks == 0) {
+		}
 
-                                int userid=check_username(users,param);
+		else {
 
-                                if (userid<0){
-                                    printf("USERNAME DOES NOT EXIST SEND AGAIN \n");
-                                    strcpy(response,"a 430\n");
-                                }
+			if (FD_ISSET(socket_sd, &socks)) {
 
-                                else{
-                                    printf("User %s initatied \n" ,param);
-                                    clients[i].user_inited=1;
-                                    strcpy(clients[i].name,param);
-                                    strcpy(clients[i].pass,users[userid].password);
+				int new_fd;
+				new_fd = accept(socket_sd, NULL, NULL);
 
-                                    strcpy(response,"331\n" );
-                                }
-                                
-                                
-                                if(send(clients[i].fd,response,strlen(response),0)<1){
-                                        perror("Error in send");
-                                        return -1;
-                                }
+				if (new_fd < 0) {
+					perror("Accept failed");
+					return -1;
+				}
 
-                                
-                            }
+				FD_SET(new_fd, &socks);
 
-                            if (strcmp(command,"PASS")==0){
+				if (new_fd > high_sock) {
+					high_sock = new_fd;
+				}
 
-                                char response[100];
+				if (create_connection(clients, new_fd) < 0) {
+					printf("Cannot add fd: %d; connection is full \n", new_fd);
+				}
+
+			}
 
 
-                                if (clients[i].user_inited==1){
+			for (int i = 0; i < MAX_CONNECTIONS; i++) {
+				printf("%d %d \n", clients[i].fd, clients[i].authenticated);
+			}
 
-                                    if (strcmp(clients[i].pass,param)==0){
-                                        clients[i].authenticated=1;
-                                        strcpy(response,"230\n");
-                                    }
+			for (int i = 0; i < MAX_CONNECTIONS; i++) {
 
-                                    else{
-                                        strcpy(response,"430\n");
-                                        printf("Wrong Password \n");
-                                    }
-                                }
-                                else{
-                                    strcpy(response,"503\n");
-                                    printf("GIVE USERNAME FIRST \n");
-                                } 
+				if (FD_ISSET(clients[i].fd, &socks)) {
 
-                                if(send(clients[i].fd,response,strlen(response),0)<1){
-                                        perror("Error in send");
-                                        return -1;
-                                }
+					char buffer[COMMAND_LIMIT];
+					memset(buffer, 0, sizeof(buffer));
 
-                            }
-                        }
-                    }
-                }
-            
-            
-        }
-    }
+					int buffer_size;
+					buffer_size = read(clients[i].fd, buffer, sizeof(buffer));
+
+
+					printf("%d  %s \n", buffer_size, buffer);
+
+
+					if (buffer_size < 0) {
+						perror("Error reading from the socket");
+					}
+
+					else if (buffer_size == 0) {
+						//TODO: REMOVE THE FD FROM THE FDSET AND the client struct 
+						printf("Removing %d from the client_list \n", clients[i].fd);
+						FD_CLR(clients[i].fd, &socks);
+						clients[i].fd = -1;
+						//close(clients[i].fd);
+					}
+
+					else {
+						char command[COMMAND_LIMIT];
+						char param[COMMAND_LIMIT];
+						sscanf(buffer, "%s %s", command, param);
+
+						if (strcmp(command, "USER") == 0) {
+
+							char response[100];
+
+							int userid = check_username(users, param);
+
+							if (userid < 0) {
+								printf("USERNAME DOES NOT EXIST SEND AGAIN \n");
+								strcpy(response, "430\n");
+							}
+
+							else {
+								printf("User %s initatied \n", param);
+								clients[i].user_inited = 1;
+								strcpy(clients[i].name, param);
+								strcpy(clients[i].pass, users[userid].password);
+
+								strcpy(response, "331\n");
+							}
+
+
+							if (send(clients[i].fd, response, strlen(response), 0) < 1) {
+								perror("Error in send");
+								return -1;
+							}
+
+
+						}
+
+						if (strcmp(command, "PASS") == 0) {
+
+							char response[100];
+
+
+							if (clients[i].user_inited == 1) {
+
+								if (strcmp(clients[i].pass, param) == 0) {
+									clients[i].authenticated = 1;
+									strcpy(response, "230\n");
+								}
+
+								else {
+									strcpy(response, "430\n");
+									printf("Wrong Password \n");
+								}
+							}
+							else {
+								strcpy(response, "503\n");
+								printf("GIVE USERNAME FIRST \n");
+							}
+
+							if (send(clients[i].fd, response, strlen(response), 0) < 1) {
+								perror("Error in send");
+								return -1;
+							}
+
+						}
+
+						if (strcmp(command, "LS") == 0) {
+
+							char response[MAX_RESPONSE];
+
+							if (clients[i].authenticated == 1) {
+
+								DIR *d;
+								struct dirent *dir;
+								d = opendir(clients[i].pwd);
+								if (d) {
+									while ((dir = readdir(d)) != NULL) {
+										if ((strlen(response) + strlen(dir->d_name)) < MAX_RESPONSE) {
+											strncat(response, "%s \n", dir->d_name);
+										}
+										else {
+											printf("MAXIMUM RESPONSE EXCEED IN LS!!!! \n");
+										}
+									}
+								}
+
+							}
+
+							else {
+								strcpy(response, "AUTHENTICATE FIRST \n");
+							}
+
+							if (send(clients[i].fd, response, strlen(response), 0) < 1) {
+								perror("Error in send");
+								return -1;
+							}
+
+						}
+
+
+
+						if (strcmp(command, "PWD") == 0) {
+
+							char response[PATH_MAX];
+
+							if (clients[i].authenticated == 1) {
+								strcpy(response, clients[i].pwd);
+							}
+							else {
+								strcpy(response, "AUTHENTICATE FIRST \n");
+							}
+
+							if (send(clients[i].fd, response, strlen(response), 0) < 1) {
+								perror("Error in send");
+								return -1;
+							}
+
+						}
+
+
+						if (strcmp(command, "CD") == 0) {
+
+						}
+					}
+				}
+
+
+			}
+		}
+	}
 }
