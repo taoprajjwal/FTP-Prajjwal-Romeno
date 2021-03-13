@@ -10,6 +10,8 @@
 #include <sys/select.h> 
 #include <sys/time.h>
 #include<dirent.h>
+#include <sys/sendfile.h>
+#include<sys/stat.h>
 
 
 
@@ -135,9 +137,42 @@ int get_connection_index(client * client_list, int fd){
 
 }
 
+void send_file(int file_sd, char * file_path) {
+	while (1) {
+		int file_descript = accept(file_sd, NULL, NULL);
+
+		int pid = fork();
+		if (pid < 0) {
+			perror("Error in forking \n");
+		}
+		if (pid == 0) {
+
+			int file = open(file_path);
+
+			struct stat st;
+
+			fstat(file, &st);
+
+			int sent;
+			sent = sendfile(file_descript, file, NULL, st.st_size);
+
+			if (sent <= st.st_size) {
+				printf("File size and sent bytes not compatible !!! \n");
+			}
+			exit(0);
+
+		}
+		else {
+			break;
+		}
+
+		
+	}
+}
+
 int main(int argc, char * argv[]) {
 
-	int socket_sd, port, high_sock;
+	int socket_sd, port, high_sock, file_socket,file_port;
 	char * addr;
 	struct timeval timeout;
 
@@ -148,6 +183,8 @@ int main(int argc, char * argv[]) {
 
 	addr = argv[1];
 	port = atoi(argv[2]);
+
+	file_port = port + 1;
 
 	user users[N_USERS];
 	initiaize_users(users, INPUT_FILE);
@@ -161,6 +198,11 @@ int main(int argc, char * argv[]) {
 	if (create_bind_socket(&socket_sd, &port, addr) < 0) {
 		return -1;
 	};
+
+	if (create_bind_socket(&file_socket, &file_port, addr) < 0) {
+		perror("Failed in creating file transfer port");
+		return -1;
+	}
 
 	client clients[MAX_CONNECTIONS];
 
@@ -183,13 +225,17 @@ int main(int argc, char * argv[]) {
 	FD_ZERO(&socks);
 	FD_SET(socket_sd, &socks);
 	high_sock = socket_sd;
-	timeout.tv_sec = 1;
-	timeout.tv_usec = 0;
+	
+	//timeout.tv_sec = 1;
+	
+	timeout.tv_usec = 200;
 
 
 
 	while (1) {
 		int readsocks = select(high_sock + 1, &socks, NULL, NULL, NULL);
+
+		printf("Select() ran \n");
 
 		if (readsocks < 0) {
 			perror("SELECT FAILED");
@@ -197,6 +243,7 @@ int main(int argc, char * argv[]) {
 		}
 
 		if (readsocks == 0) {
+			printf(".\n");
 		}
 
 		else {
@@ -232,6 +279,8 @@ int main(int argc, char * argv[]) {
 
 				if (FD_ISSET(clients[i].fd, &socks)) {
 
+					printf("client %d has isset \n", i);
+
 					char buffer[COMMAND_LIMIT];
 					memset(buffer, 0, sizeof(buffer));
 
@@ -258,6 +307,8 @@ int main(int argc, char * argv[]) {
 						char command[COMMAND_LIMIT];
 						char param[COMMAND_LIMIT];
 						sscanf(buffer, "%s %s", command, param);
+
+
 
 						if (strcmp(command, "USER") == 0) {
 
@@ -350,8 +401,6 @@ int main(int argc, char * argv[]) {
 
 						}
 
-
-
 						if (strcmp(command, "PWD") == 0) {
 
 							char response[PATH_MAX];
@@ -370,8 +419,81 @@ int main(int argc, char * argv[]) {
 
 						}
 
-
 						if (strcmp(command, "CD") == 0) {
+
+
+							// return changed path + success message 
+							char response[PATH_MAX+15];
+
+							if (clients[i].authenticated == 1) {
+
+								// change directory to where the current connection thinks is the pwd
+								chdir(clients[i].pwd);
+
+								if (chdir(param) < 0) {
+									printf("%s does not exists\n", param);
+									strcpy(response, "Path does not exists\n");
+								}
+
+								else {
+									strcpy(response, "Changed pwd to the path");
+
+									char cwd[PATH_MAX];
+
+									getcwd(cwd, sizeof(cwd));
+
+									strcpy(clients[i].pwd , cwd);
+
+									printf("%s \n", clients[i].pwd);
+								}
+								
+							}
+
+							else {
+								strcpy(response, "AUTHENTICATE FIRST \n");
+							}
+
+							if (send(clients[i].fd, response, strlen(response), 0) < 1) {
+								perror("Error in send");
+								return -1;
+							}
+
+						}
+
+						if (strcmp(command, "GET") == 0) {
+
+
+							char response[20];
+
+							if (clients[i].authenticated == 1) {
+
+
+								//change to the pwd of the client, might have been changed by other connections
+								chdir(clients[i].pwd);
+
+								FILE *file;
+								if (file = fopen(param, "r")) {
+									fclose(file);
+									strcpy(response,"File Exists\n");
+									send(clients[i].fd, response, strlen(response), 0);
+
+
+									send_file(file_socket, param);
+
+								}
+
+								else {
+									strcpy(response,"File does not exist\n");
+									send(clients[i].fd, response, strlen(response), 0);
+								}
+
+							}
+
+							else {
+								strcpy(response, "Authenticate First\n");
+								send(clients[i].fd, response, strlen(response), 0);
+
+							}
 
 						}
 					}
