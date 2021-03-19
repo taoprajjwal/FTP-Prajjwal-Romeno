@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 
 	timeout.tv_usec = 200;
 
-	while (1)
+	while (1){
 
 		ready_socks = socks;
 		int readsocks = select(high_sock + 1, &ready_socks, NULL, NULL, NULL);
@@ -396,20 +396,33 @@ int main(int argc, char *argv[])
 
 							char response_ls[MAX_RESPONSE];
 							memset(response_ls, 0, sizeof(response_ls));
+							strcpy(response_ls, "\n");
 
 							if (clients[i].authenticated == 1)
 							{
 
+								
+
 								DIR *d;
 								struct dirent *dir;
 								d = opendir(clients[i].pwd);
+								printf("%s \n", clients[i].pwd);
 								if (d)
 								{
 									while ((dir = readdir(d)) != NULL)
 									{
 										if ((strlen(response_ls) + strlen(dir->d_name)) < MAX_RESPONSE)
+
 										{
-											strncat(response_ls, "%s \n", dir->d_name);
+
+											printf("%s\n", dir->d_name);
+
+											char directory_name[PATH_MAX];
+											memset(directory_name, 0, sizeof(directory_name));
+
+											strcpy(directory_name, dir->d_name);
+											strcat(response_ls, directory_name);
+											strcat(response_ls, "\n");
 										}
 										else
 										{
@@ -417,6 +430,8 @@ int main(int argc, char *argv[])
 										}
 									}
 								}
+
+								printf("%s \n", response_ls);
 								if (send(clients[i].fd, response_ls, strlen(response_ls), 0) < 1)
 								{
 									perror("Error in send");
