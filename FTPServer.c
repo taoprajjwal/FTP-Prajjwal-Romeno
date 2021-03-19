@@ -144,6 +144,9 @@ void send_file(int file_sd, char *file_path)
 	printf("In send_file \n");
 	int file_descript = accept(file_sd, NULL, NULL);
 
+	printf("Accept completed \n");
+
+
 	int pid = fork();
 	if (pid < 0)
 	{
@@ -374,7 +377,7 @@ int main(int argc, char *argv[])
 								strcpy(response, "331");
 							}
 
-							printf("    SENDING strlen %d\n", strlen(response));
+							printf("SENDING strlen %d\n", strlen(response));
 							if (send(clients[i].fd, response, strlen(response), 0) < 1)
 							{
 								perror("Error in send");
@@ -550,7 +553,7 @@ int main(int argc, char *argv[])
 						{
 							chdir(clients[i].pwd);
 							char response[2];
-							char response2[256];
+							char response2[100];
 
 							if (clients[i].authenticated == 1)
 							{
@@ -565,6 +568,8 @@ int main(int argc, char *argv[])
 									fstat(file, &st);
 									strcpy(response, "150");
 									sprintf(response2, "%d", st.st_size);
+
+									printf("File size being sent %s \n", response2);
 									//send(clients[i].fd, response, strlen(response), 0);
 									send(clients[i].fd, response2, sizeof(response2), 0);
 									close(file);
@@ -584,6 +589,7 @@ int main(int argc, char *argv[])
 								send(clients[i].fd, response, strlen(response), 0);
 							}
 						}
+
 						if (strcmp(command, "PUT") == 0)
 						{
 							//fork("");

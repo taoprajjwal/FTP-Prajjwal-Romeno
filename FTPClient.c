@@ -211,15 +211,24 @@ int main(int argc, char *argv[])
             char *fileName = basename(currentUserInputArray[1]);
             printf("file is %s \n", fname(fileName));
 
-            char response[10]; //string to hold the server esponse
-            char response2[20];
+            char response[100]; //string to hold the server esponse
+
+			memset(response, 0, sizeof(response));
+            
+			char response2[20];
+
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
             char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
             send(srv_socket, commandString, strlen(commandString), 0);
-            int n = recv(srv_socket, response, sizeof(response), 0);
-            printf("response is %s\n", response);
-            if (n > 0 && atoi(response) != 550 && atoi(response) != 503)
+            
+			int n = recv(srv_socket, response, sizeof(response), 0);
+
+            printf("response is %s, int n:%d \n", response,n);
+            
+			if (n > 0 && atoi(response) != 550 && atoi(response) != 503)
             {
+
+				
                 int fileSize = atoi(response);
 
                 file = fopen(fname(fileName), "w");
@@ -235,17 +244,27 @@ int main(int argc, char *argv[])
                     return -1;
                 }
                 char buffer[512]; //string to hold the server esponse
+				memset(buffer, 0, sizeof(buffer));
+
                 printf("Before file response \n");
 
                 int remainingData = fileSize;
                 int len;
-                while ((remainingData > 0) && ((len = recv(file_socket, buffer, 512, 0)) > 0))
+
+				len = recv(file_socket, buffer, 512, 0);
+				printf("Remaining data: %d, Len: %d", remainingData,len);
+
+                while ((remainingData > 0) && (len > 0))
                 {
+
+					printf("Went into the main loop \n");
                     float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
                     printf("Download %.2f%% complete\n", percentage);
                     fwrite(buffer, sizeof(char), len, file);
                     remainingData -= len;
                 }
+
+
                 //int n = recv(file_socket, fileResponse, sizeof(fileResponse), 0);
                 printf("Download 100.00%% complete\n");
                 printf("File %s successfully recieved! \n", fname(fileName));
