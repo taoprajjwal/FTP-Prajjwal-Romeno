@@ -13,6 +13,7 @@
 #define MAX_STRING_WORD_SIZE 30
 #define MAX_STRING_SIZE 60
 #define RESPONSE_SIZE 10
+#define PATH_MAX 512
 
 int main(int argc, char *argv[])
 {
@@ -23,7 +24,7 @@ int main(int argc, char *argv[])
     srv_addr.sin_family = AF_INET;                 //Address family
     srv_addr.sin_port = htons(atoi(argv[2]));      //Port Number - check if arg exists or display error msg
     srv_addr.sin_addr.s_addr = inet_addr(argv[1]); // intead of all local onterfaces you can also specify a single enterface e.g. inet_addr("127.0.0.1") for loopback address
-
+    char CWD[PATH_MAX];
     if (connect(srv_socket, (struct sockaddr *)&srv_addr, sizeof(srv_addr)) == -1)
     {
         perror("Connect: ");
@@ -92,15 +93,22 @@ int main(int argc, char *argv[])
         {
             printf("!CD command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
             fflush(stdout);
-            char response[RESPONSE_SIZE]; //string to hold the server esponse
-            char *commandStringP1 = strcat(currentUserInputArray[0], " ");
-            char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
-            printf("Command sent -> %s \n", commandString);
-            send(srv_socket, commandString, strlen(commandString), 0);
-            int n = recv(srv_socket, response, sizeof(response), 0);
-            if (n > 0)
+
+            if (chdir(currentUserInputArray[1]) < 0)
             {
-                printf("%s", response);
+                printf("Path %s does not exist.\n", currentUserInputArray[1]);
+            }
+
+            else
+            {
+
+                char cwd[PATH_MAX];
+
+                getcwd(cwd, sizeof(cwd));
+
+                strcpy(CWD, cwd);
+
+                printf("Changed directory. \n");
             }
 
             fflush(stdout);
