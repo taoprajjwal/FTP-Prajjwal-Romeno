@@ -235,10 +235,10 @@ int main(int argc, char *argv[])
                     return -1;
                 }
                 char buffer[512]; //string to hold the server esponse
-                printf("Before file response \n");
 
                 int remainingData = fileSize;
                 int len;
+                printf("Before file response filesize is %d \n", fileSize);
                 while ((remainingData > 0) && ((len = recv(file_socket, buffer, 512, 0)) > 0))
                 {
                     float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
