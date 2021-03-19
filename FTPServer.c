@@ -547,24 +547,16 @@ int main(int argc, char *argv[])
 								chdir(clients[i].pwd);
 
 								FILE *file;
-								printf("before if\n");
 								if (file = open(param, O_RDONLY))
 								{
 									struct stat st;
-									printf("after if\n");
 									fstat(file, &st);
-									printf("Reached after getting size which is %d\n", st.st_size);
 									strcpy(response, "150");
 									sprintf(response2, "%d", st.st_size);
-									printf("Reached after after getting size which is %s size %d\n", response2, sizeof(response2));
 									//send(clients[i].fd, response, strlen(response), 0);
-									printf("after first send\n");
 									send(clients[i].fd, response2, sizeof(response2), 0);
-									printf("after second send\n");
 									close(file);
-									printf("after file close\n");
 									send_file(file_socket, param);
-									printf("after send_file call\n");
 								}
 
 								else
