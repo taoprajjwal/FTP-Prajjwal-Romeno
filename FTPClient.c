@@ -33,13 +33,13 @@ char *fname(char *path)
     return (aux == path) ? path : path + 2;
 }
 
-int connectToFileSocket(int *file_socket, char *ip, char *port)
+int connectToFileSocket(int *file_socket, char *ip, int *port)
 {
     //int file_socket = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in srv_addr;              //structure to hold the type, address and port
     memset(&srv_addr, 0, sizeof(srv_addr));   //set the Fill the structure with 0s
     srv_addr.sin_family = AF_INET;            //Address family
-    srv_addr.sin_port = htons(atoi(port));    //Port Number - check if arg exists or display error msg
+    srv_addr.sin_port = htons((port));        //Port Number - check if arg exists or display error msg
     srv_addr.sin_addr.s_addr = inet_addr(ip); // intead of all local onterfaces you can also specify a single enterface e.g. inet_addr("127.0.0.1") for loopback address
     char CWD[PATH_MAX];
     return connect(file_socket, (struct sockaddr *)&srv_addr, sizeof(srv_addr));
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
         char currentUserInputArray[2][MAX_STRING_WORD_SIZE];
         //constant loop for getting the user's input commands
         printf("ftp > ");
-        scanf("%[^\n]", buffer);
+        //scanf("%[^\n]", buffer);
         scanf("%s %[^\n]s", currentUserInputArray[0], currentUserInputArray[1]);
 
         if (strcmp(currentUserInputArray[0], "USER") == 0 && currentUserInputArray[1][0] != '\0')
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 
             fflush(stdout);
         }
-        else if (strcmp(currentUserInputArray[0], "PWD") == 0 && currentUserInputArray[1][0] != '\0')
+        else if (strcmp(currentUserInputArray[0], "PWD") == 0)
         {
             printf("PWD command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
             fflush(stdout);
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 
             fflush(stdout);
         }
-        else if (strcmp(currentUserInputArray[0], "LS") == 0 && currentUserInputArray[1][0] == '\0')
+        else if (strcmp(currentUserInputArray[0], "LS") == 0)
         {
             printf("LS command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
             fflush(stdout);
@@ -179,9 +179,10 @@ int main(int argc, char *argv[])
         }
         else if (strcmp(currentUserInputArray[0], "GET") == 0 && currentUserInputArray[1][0] != '\0')
         {
+            FILE *file;
             printf("currentUserInputArray %s \n", currentUserInputArray[1]);
-            char *file = basename(currentUserInputArray[1]);
-            printf("file is %s \n", fname(file));
+            char *fileName = basename(currentUserInputArray[1]);
+            printf("file is %s \n", fname(fileName));
 
             char response[20]; //string to hold the server esponse
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
@@ -191,12 +192,23 @@ int main(int argc, char *argv[])
             printf("response is %s", response);
             if (n > 0 && atoi(response) == 150)
             {
-                printf("%s", response);
-                if (connectToFileSocket(file_socket, argv[1], argv[2]) < 0)
+                file = fopen(fname(fileName), "w");
+                if (file == NULL)
+                {
+                    perror("Open file error: ");
+                    return -1;
+                }
+                int port = atoi(argv[2]) + 1;
+                if (connectToFileSocket(file_socket, argv[1], port) < 0)
                 {
                     perror("Connect: ");
                     return -1;
                 }
+                char fileResponse[10000]; //string to hold the server esponse
+                printf("Before file response \n");
+                int n = recv(file_socket, fileResponse, sizeof(fileResponse), 0);
+                printf("File response: %s\n", fileResponse);
+                fclose(file);
             }
             //
         }
