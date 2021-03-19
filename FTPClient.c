@@ -15,8 +15,10 @@
 #include <sys/sendfile.h>
 #define MAX_STRING_WORD_SIZE 30
 #define MAX_STRING_SIZE 60
-#define RESPONSE_SIZE 10
+#define RESPONSE_SIZE 100
 #define PATH_MAX 512
+#define MAX_RESPONSE 4096
+
 
 char *fname(char *path)
 {
@@ -134,7 +136,7 @@ int main(int argc, char *argv[])
         {
             printf("CD command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
             fflush(stdout);
-            char response[RESPONSE_SIZE]; //string to hold the server esponse
+            char response[PATH_MAX]; //string to hold the server esponse
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
             char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
             printf("Command sent -> %s \n", commandString);
@@ -150,7 +152,7 @@ int main(int argc, char *argv[])
         else if (strcmp(currentUserInputArray[0], "PWD") == 0)
         {
             fflush(stdout);
-            char response[RESPONSE_SIZE]; //string to hold the server esponse
+            char response[PATH_MAX]; //string to hold the server esponse
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
             char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
             send(srv_socket, commandString, strlen(commandString), 0);
@@ -170,7 +172,7 @@ int main(int argc, char *argv[])
         else if (strcmp(currentUserInputArray[0], "LS") == 0)
         {
             fflush(stdout);
-            char response[RESPONSE_SIZE]; //string to hold the server esponse
+            char response[MAX_RESPONSE]; //string to hold the server esponse
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
             char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
             send(srv_socket, commandString, strlen(commandString), 0);
@@ -211,7 +213,7 @@ int main(int argc, char *argv[])
             char *fileName = basename(currentUserInputArray[1]);
             printf("file is %s \n", fname(fileName));
 
-            char response[100]; //string to hold the server esponse
+            char response[RESPONSE_SIZE]; //string to hold the server esponse
 
 			memset(response, 0, sizeof(response));
             
