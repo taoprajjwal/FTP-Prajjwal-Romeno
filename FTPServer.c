@@ -328,13 +328,14 @@ int main(int argc, char *argv[])
 						{
 
 							char response[100];
+							memset(response, 0, sizeof(response));
 
 							int userid = check_username(users, param);
 
 							if (userid < 0)
 							{
 								printf("USERNAME DOES NOT EXIST SEND AGAIN \n");
-								strcpy(response, "430\n");
+								strcpy(response, "430");
 							}
 
 							else
@@ -344,7 +345,7 @@ int main(int argc, char *argv[])
 								strcpy(clients[i].name, param);
 								strcpy(clients[i].pass, users[userid].password);
 
-								strcpy(response, "331\n");
+								strcpy(response, "331");
 							}
 
 							printf("    SENDING strlen %d\n", strlen(response));
@@ -359,6 +360,7 @@ int main(int argc, char *argv[])
 						{
 
 							char response[100];
+							memset(response, 0, sizeof(response));
 
 							if (clients[i].user_inited == 1)
 							{
@@ -366,18 +368,18 @@ int main(int argc, char *argv[])
 								if (strcmp(clients[i].pass, param) == 0)
 								{
 									clients[i].authenticated = 1;
-									strcpy(response, "230\n");
+									strcpy(response, "230");
 								}
 
 								else
 								{
-									strcpy(response, "430\n");
+									strcpy(response, "430");
 									printf("Wrong Password \n");
 								}
 							}
 							else
 							{
-								strcpy(response, "503\n");
+								strcpy(response, "503");
 								printf("GIVE USERNAME FIRST \n");
 							}
 
@@ -391,7 +393,8 @@ int main(int argc, char *argv[])
 						if (strcmp(command, "LS") == 0)
 						{
 
-							char response[MAX_RESPONSE];
+							char response_ls[MAX_RESPONSE];
+							memset(response_ls, 0, sizeof(response_ls));
 
 							if (clients[i].authenticated == 1)
 							{
@@ -403,9 +406,9 @@ int main(int argc, char *argv[])
 								{
 									while ((dir = readdir(d)) != NULL)
 									{
-										if ((strlen(response) + strlen(dir->d_name)) < MAX_RESPONSE)
+										if ((strlen(response_ls) + strlen(dir->d_name)) < MAX_RESPONSE)
 										{
-											strncat(response, "%s \n", dir->d_name);
+											strncat(response_ls, "%s \n", dir->d_name);
 										}
 										else
 										{
@@ -413,38 +416,49 @@ int main(int argc, char *argv[])
 										}
 									}
 								}
+								if (send(clients[i].fd, response_ls, strlen(response_ls), 0) < 1)
+								{
+									perror("Error in send");
+									return -1;
+								}
 							}
 
 							else
 							{
-								strcpy(response, "AUTHENTICATE FIRST \n");
-							}
-
-							if (send(clients[i].fd, response, strlen(response), 0) < 1)
-							{
-								perror("Error in send");
-								return -1;
+								strcpy(response_ls, "530");
+								if (send(clients[i].fd, response_ls, strlen(response_ls), 0) < 1)
+								{
+									perror("Error in send");
+									return -1;
+								}
 							}
 						}
 
 						if (strcmp(command, "PWD") == 0)
 						{
 
-							char response[PATH_MAX];
+							char response_pwd[PATH_MAX];
+							memset(response_pwd, 0, sizeof(response_pwd));
 
 							if (clients[i].authenticated == 1)
 							{
-								strcpy(response, clients[i].pwd);
+								strcpy(response_pwd, clients[i].pwd);
+
+								if (send(clients[i].fd, response_pwd, strlen(response_pwd), 0) < 1)
+								{
+									perror("Error in send");
+									return -1;
+								}
 							}
 							else
 							{
-								strcpy(response, "AUTHENTICATE FIRST \n");
-							}
+								strcpy(response_pwd, "530");
 
-							if (send(clients[i].fd, response, strlen(response), 0) < 1)
-							{
-								perror("Error in send");
-								return -1;
+								if (send(clients[i].fd, response_pwd, strlen(response_pwd), 0) < 1)
+								{
+									perror("Error in send");
+									return -1;
+								}
 							}
 						}
 
@@ -452,7 +466,8 @@ int main(int argc, char *argv[])
 						{
 
 							// return changed path + success message
-							char response[PATH_MAX + 15];
+							char response[100];
+							memset(response, 0, sizeof(response));
 
 							if (clients[i].authenticated == 1)
 							{
@@ -468,7 +483,7 @@ int main(int argc, char *argv[])
 
 								else
 								{
-									strcpy(response, "Changed pwd to the path");
+									strcpy(response, "200");
 
 									char cwd[PATH_MAX];
 
@@ -482,7 +497,7 @@ int main(int argc, char *argv[])
 
 							else
 							{
-								strcpy(response, "AUTHENTICATE FIRST \n");
+								strcpy(response, "503");
 							}
 
 							if (send(clients[i].fd, response, strlen(response), 0) < 1)
@@ -507,7 +522,7 @@ int main(int argc, char *argv[])
 								if (file = fopen(param, "r"))
 								{
 									fclose(file);
-									strcpy(response, "File Exists\n");
+									strcpy(response, "150");
 									send(clients[i].fd, response, strlen(response), 0);
 
 									send_file(file_socket, param);
@@ -515,14 +530,14 @@ int main(int argc, char *argv[])
 
 								else
 								{
-									strcpy(response, "File does not exist\n");
+									strcpy(response, "550");
 									send(clients[i].fd, response, strlen(response), 0);
 								}
 							}
 
 							else
 							{
-								strcpy(response, "Authenticate First\n");
+								strcpy(response, "503");
 								send(clients[i].fd, response, strlen(response), 0);
 							}
 						}
