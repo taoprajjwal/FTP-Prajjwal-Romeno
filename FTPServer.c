@@ -161,7 +161,7 @@ void send_file(int file_sd, char *file_path)
 			int sent;
 			sent = sendfile(file_descript, file, NULL, st.st_size);
 
-			if (sent <= st.st_size)
+			if (sent < st.st_size)
 			{
 				printf("File size and sent bytes not compatible !!! \n");
 			}
@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
 		printf("%d %d \n", clients[i].fd, clients[i].authenticated);
 	}
 
-	fd_set socks;
+	fd_set socks, ready_socks;
 	FD_ZERO(&socks);
 	FD_SET(socket_sd, &socks);
 	high_sock = socket_sd;
@@ -239,8 +239,9 @@ int main(int argc, char *argv[])
 	timeout.tv_usec = 200;
 
 	while (1)
-	{
-		int readsocks = select(high_sock + 1, &socks, NULL, NULL, NULL);
+
+		ready_socks = socks;
+		int readsocks = select(high_sock + 1, &ready_socks, NULL, NULL, NULL);
 
 		printf("Select() ran \n");
 
@@ -258,7 +259,7 @@ int main(int argc, char *argv[])
 		else
 		{
 
-			if (FD_ISSET(socket_sd, &socks))
+			if (FD_ISSET(socket_sd, &ready_socks))
 			{
 
 				int new_fd;
@@ -291,7 +292,7 @@ int main(int argc, char *argv[])
 			for (int i = 0; i < MAX_CONNECTIONS; i++)
 			{
 
-				if (FD_ISSET(clients[i].fd, &socks))
+				if (FD_ISSET(clients[i].fd, &ready_socks))
 				{
 
 					printf("client %d has isset \n", i);
@@ -315,7 +316,7 @@ int main(int argc, char *argv[])
 						printf("Removing %d from the client_list \n", clients[i].fd);
 						FD_CLR(clients[i].fd, &socks);
 						clients[i].fd = -1;
-						//close(clients[i].fd);
+						close(clients[i].fd);
 					}
 
 					else
