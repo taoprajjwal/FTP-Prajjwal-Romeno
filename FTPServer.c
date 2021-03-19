@@ -187,18 +187,12 @@ void send_file(int file_sd, char *file_path)
 	}
 }
 
+
 int connectToFileSocketInServer(int *file_socket, char *ip, int *port)
 {
 	//int file_socket = socket(AF_INET, SOCK_STREAM, 0);
 	int file_descript = accept(file_socket, NULL, NULL);
 	return file_descript;
-	struct sockaddr_in srv_addr;			  //structure to hold the type, address and port
-	memset(&srv_addr, 0, sizeof(srv_addr));	  //set the Fill the structure with 0s
-	srv_addr.sin_family = AF_INET;			  //Address family
-	srv_addr.sin_port = htons((port));		  //Port Number - check if arg exists or display error msg
-	srv_addr.sin_addr.s_addr = inet_addr(ip); // intead of all local onterfaces you can also specify a single enterface e.g. inet_addr("127.0.0.1") for loopback address
-	char CWD[PATH_MAX];
-	return connect(file_socket, (struct sockaddr *)&srv_addr, sizeof(srv_addr));
 }
 
 int main(int argc, char *argv[])
@@ -611,18 +605,21 @@ int main(int argc, char *argv[])
 							else if (pid == 0)
 							{
 								printf("In child\n");
-								if (connectToFileSocketInServer(file_socket, argv[1], port) < 0)
+								int file_fd = connectToFileSocketInServer(file_socket, argv[1], port);
+								if ( file_fd< 0)
 								{
 									perror("Connection error: ");
 									return -1;
 								}
+
 								printf("After connect to file socket it server\n");
 								char buffer[512]; //string to hold the server esponse
 
 								int remainingData = fileSize;
 								int len;
 								printf("Before while loop, file size is %d\n", fileSize);
-								while ((remainingData > 0) && ((len = recv(file_socket, buffer, 512, 0)) > 0))
+								
+								while ((remainingData > 0) && ((len = recv(file_fd, buffer, 512, 0)) > 0))
 								{
 									float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
 									printf("Upload %.2f%% complete\n", percentage);
@@ -630,6 +627,7 @@ int main(int argc, char *argv[])
 									fwrite(buffer, sizeof(char), len, file);
 									remainingData -= len;
 								}
+
 								printf("After while loop\n");
 								exit(0);
 							}
