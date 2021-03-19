@@ -16,10 +16,10 @@ PWD:
 Sends pwd as response if character successful
 
 CD:
-530: Authenticate first
+503: Authenticate first
 200: Changed successfully
 
 GET:
 150: File OK. Start connection
 550: File could not be opened on the server
-530: Authenticate first
+503: Authenticate first
