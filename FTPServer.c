@@ -524,10 +524,8 @@ int main(int argc, char *argv[])
 									fclose(file);
 									strcpy(response, "150");
 									send(clients[i].fd, response, strlen(response), 0);
-
 									send_file(file_socket, param);
 								}
-
 								else
 								{
 									strcpy(response, "550");
