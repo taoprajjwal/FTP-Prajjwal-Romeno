@@ -101,17 +101,15 @@ int main(int argc, char *argv[])
 
             else
             {
-
-                char cwd[PATH_MAX];
-
-                getcwd(cwd, sizeof(cwd));
-
-                strcpy(CWD, cwd);
-
+                getcwd(CWD, sizeof(CWD));
                 printf("Changed directory. \n");
             }
 
             fflush(stdout);
+        }
+        else if (strcmp(currentUserInputArray[0], "!PWD") == 0 && currentUserInputArray[1][0] == '\0')
+        {
+            printf("%s \n", CWD);
         }
         else
         {
