@@ -166,9 +166,7 @@ void send_file(int file_sd, char *file_path)
 		printf("remainingData: %d\n", remainingData);
 		while (((sent = sendfile(file_descript, file, &offset, BUFSIZ)) > 0) && (remainingData > 0))
 		{
-			fprintf(stdout, "1. Server sent %d bytes from file's data, offset is now : %d and remaining data = %d\n", sent, offset, remainingData);
 			remainingData -= sent;
-			fprintf(stdout, "2. Server sent %d bytes from file's data, offset is now : %d and remaining data = %d\n", sent, offset, remainingData);
 		}
 
 		// sent = sendfile(file_descript, file, NULL, st.st_size);
@@ -184,6 +182,20 @@ void send_file(int file_sd, char *file_path)
 	{
 		wait(NULL);
 	}
+}
+
+int connectToFileSocketInServer(int *file_socket, char *ip, int *port)
+{
+	//int file_socket = socket(AF_INET, SOCK_STREAM, 0);
+	int file_descript = accept(file_socket, NULL, NULL);
+	return file_descript;
+	struct sockaddr_in srv_addr;			  //structure to hold the type, address and port
+	memset(&srv_addr, 0, sizeof(srv_addr));	  //set the Fill the structure with 0s
+	srv_addr.sin_family = AF_INET;			  //Address family
+	srv_addr.sin_port = htons((port));		  //Port Number - check if arg exists or display error msg
+	srv_addr.sin_addr.s_addr = inet_addr(ip); // intead of all local onterfaces you can also specify a single enterface e.g. inet_addr("127.0.0.1") for loopback address
+	char CWD[PATH_MAX];
+	return connect(file_socket, (struct sockaddr *)&srv_addr, sizeof(srv_addr));
 }
 
 int main(int argc, char *argv[])
@@ -241,7 +253,7 @@ int main(int argc, char *argv[])
 		printf("%d %d \n", clients[i].fd, clients[i].authenticated);
 	}
 
-	fd_set socks,ready_socks;
+	fd_set socks, ready_socks;
 	FD_ZERO(&socks);
 	FD_SET(socket_sd, &socks);
 	high_sock = socket_sd;
@@ -307,7 +319,6 @@ int main(int argc, char *argv[])
 
 				if (FD_ISSET(clients[i].fd, &ready_socks))
 				{
-
 					printf("client %d has isset \n", i);
 
 					char buffer[COMMAND_LIMIT];
@@ -336,7 +347,8 @@ int main(int argc, char *argv[])
 					{
 						char command[COMMAND_LIMIT];
 						char param[COMMAND_LIMIT];
-						sscanf(buffer, "%s %s", command, param);
+						char param2[COMMAND_LIMIT];
+						sscanf(buffer, "%s %s %s", command, param, param2);
 
 						if (strcmp(command, "USER") == 0)
 						{
@@ -536,7 +548,7 @@ int main(int argc, char *argv[])
 
 						if (strcmp(command, "GET") == 0)
 						{
-
+							chdir(clients[i].pwd);
 							char response[2];
 							char response2[256];
 
@@ -571,6 +583,52 @@ int main(int argc, char *argv[])
 								strcpy(response, "503");
 								send(clients[i].fd, response, strlen(response), 0);
 							}
+						}
+						if (strcmp(command, "PUT") == 0)
+						{
+							//fork("");
+							chdir(clients[i].pwd);
+							int fileSize = atoi(param);
+							FILE *file = fopen(param2, "w");
+							if (file == NULL)
+							{
+								perror("Open file error: ");
+								return -1;
+							}
+
+							int port = atoi(argv[2]) + 1;
+							int pid = fork();
+							if (pid < 0)
+							{
+								perror("Error in forking \n");
+							}
+							else if (pid == 0)
+							{
+								printf("In child\n");
+								if (connectToFileSocketInServer(file_socket, argv[1], port) < 0)
+								{
+									perror("Connection error: ");
+									return -1;
+								}
+								printf("After connect to file socket it server\n");
+								char buffer[512]; //string to hold the server esponse
+
+								int remainingData = fileSize;
+								int len;
+								printf("Before while loop, file size is %d\n", fileSize);
+								while ((remainingData > 0) && ((len = recv(file_socket, buffer, 512, 0)) > 0))
+								{
+									float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
+									printf("Upload %.2f%% complete\n", percentage);
+									printf("Upload %.2f%% complete\n", percentage);
+									fwrite(buffer, sizeof(char), len, file);
+									remainingData -= len;
+								}
+								printf("After while loop\n");
+								exit(0);
+							}
+
+							//send ok to client
 						}
 					}
 				}

@@ -10,7 +10,9 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <libgen.h>
-
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/sendfile.h>
 #define MAX_STRING_WORD_SIZE 30
 #define MAX_STRING_SIZE 60
 #define RESPONSE_SIZE 10
@@ -32,10 +34,16 @@ char *fname(char *path)
     /* It must ignore the \ */
     return (aux == path) ? path : path + 2;
 }
-
+void authenticationMessage(int code)
+{
+    if (code == 530)
+    {
+        printf("Authentication required. Please enter username and password using the USER and PASS commands.\n");
+    }
+}
 int connectToFileSocket(int *file_socket, char *ip, int *port)
 {
-    //int file_socket = socket(AF_INET, SOCK_STREAM, 0);
+    //file_socket = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in srv_addr;              //structure to hold the type, address and port
     memset(&srv_addr, 0, sizeof(srv_addr));   //set the Fill the structure with 0s
     srv_addr.sin_family = AF_INET;            //Address family
@@ -47,6 +55,7 @@ int connectToFileSocket(int *file_socket, char *ip, int *port)
 
 int main(int argc, char *argv[])
 {
+
     printf("%s %s \n", argv[1], argv[2]); // port number is second argv 2
     int srv_socket = socket(AF_INET, SOCK_STREAM, 0);
     int file_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -100,7 +109,6 @@ int main(int argc, char *argv[])
             char response[RESPONSE_SIZE]; //string to hold the server esponse
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
             char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
-            printf("Command sent -> %s \n", commandString);
             send(srv_socket, commandString, strlen(commandString), 0);
             int n = recv(srv_socket, response, sizeof(response), 0);
             if (n > 0)
@@ -118,7 +126,6 @@ int main(int argc, char *argv[])
                 {
                     printf("Authenticated!\n", response);
                 }
-                printf("%s", response);
             }
 
             fflush(stdout);
@@ -142,41 +149,41 @@ int main(int argc, char *argv[])
         }
         else if (strcmp(currentUserInputArray[0], "PWD") == 0)
         {
-            printf("PWD command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
             fflush(stdout);
             char response[RESPONSE_SIZE]; //string to hold the server esponse
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
             char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
-            printf("Command sent -> %s \n", commandString);
             send(srv_socket, commandString, strlen(commandString), 0);
             int n = recv(srv_socket, response, sizeof(response), 0);
             if (n > 0)
             {
-                printf("%s", response);
+                int responseCode = atoi(response);
+                authenticationMessage(responseCode);
+                if (responseCode == 200)
+                {
+                    printf("Changed server directory sucessfully.\n");
+                }
             }
 
             fflush(stdout);
         }
         else if (strcmp(currentUserInputArray[0], "LS") == 0)
         {
-            printf("LS command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
             fflush(stdout);
             char response[RESPONSE_SIZE]; //string to hold the server esponse
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
             char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
-            printf("Command sent -> %s \n", commandString);
             send(srv_socket, commandString, strlen(commandString), 0);
             int n = recv(srv_socket, response, sizeof(response), 0);
             if (n > 0)
             {
-                printf("%s", response);
+                printf("%s\n", response);
             }
 
             fflush(stdout);
         }
         else if (strcmp(currentUserInputArray[0], "!CD") == 0 && currentUserInputArray[1][0] != '\0')
         {
-            printf("!CD command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
             fflush(stdout);
 
             if (chdir(currentUserInputArray[1]) < 0)
@@ -198,6 +205,7 @@ int main(int argc, char *argv[])
         }
         else if (strcmp(currentUserInputArray[0], "GET") == 0 && currentUserInputArray[1][0] != '\0')
         {
+            file_socket = socket(AF_INET, SOCK_STREAM, 0);
             FILE *file;
             printf("currentUserInputArray %s \n", currentUserInputArray[1]);
             char *fileName = basename(currentUserInputArray[1]);
@@ -233,16 +241,78 @@ int main(int argc, char *argv[])
                 int len;
                 while ((remainingData > 0) && ((len = recv(file_socket, buffer, 512, 0)) > 0))
                 {
-                    printf("buf %s\n", buffer);
+                    float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
+                    printf("Download %.2f%% complete\n", percentage);
                     fwrite(buffer, sizeof(char), len, file);
                     remainingData -= len;
                 }
                 //int n = recv(file_socket, fileResponse, sizeof(fileResponse), 0);
-                printf("passed while loop \n");
+                printf("Download 100.00%% complete\n");
+                printf("File %s successfully recieved! \n", fname(fileName));
                 fclose(file);
-                close(file_socket);
             }
             //
+        }
+        else if (strcmp(currentUserInputArray[0], "PUT") == 0 && currentUserInputArray[1][0] != '\0')
+        {
+            file_socket = socket(AF_INET, SOCK_STREAM, 0);
+            FILE *file;
+            if (file = open(currentUserInputArray[1], O_RDONLY))
+            {
+                char *fileName = basename(currentUserInputArray[1]);
+                struct stat st;
+                fstat(file, &st);
+                //(float)
+                char fileSizeChar[512];
+                sprintf(fileSizeChar, "%d", st.st_size);
+                //printf("file is %s \n", fname(fileName));
+                //(float)
+                char *commandStringP1 = strcat(currentUserInputArray[0], " ");
+                char *commandStringP2 = strcat(commandStringP1, fileSizeChar);
+                char *commandStringP3 = strcat(commandStringP2, " ");
+                char *commandString = strcat(commandStringP2, fname(fileName));
+
+                //strcpy(response, "150");
+                //sprintf(response2, "%d", st.st_size);
+                //send(clients[i].fd, response, strlen(response), 0);
+                //send(clients[i].fd, response2, sizeof(response2), 0);
+                send(srv_socket, commandString, strlen(commandString), 0);
+
+                int remainingData = st.st_size;
+                off_t offset = 0;
+                int sent;
+                //char buf[512];
+                /* Sending file data */
+                int port = atoi(argv[2]) + 1;
+                if (connectToFileSocket(file_socket, argv[1], port) < 0)
+                {
+                    perror("Connect: ");
+                    return -1;
+                }
+                printf("remainingData: %d\n", remainingData);
+                while (((sent = sendfile(file_socket, file, &offset, BUFSIZ)) > 0) && (remainingData > 0))
+                {
+                    int fileSize = st.st_size;
+                    float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
+                    printf("Upload %.2f%% complete\n", percentage);
+                    remainingData -= sent;
+                }
+                printf("Upload 100.00%% complete\n");
+                // sent = sendfile(file_descript, file, NULL, st.st_size);
+
+                // if (sent <= st.st_size)
+                // {
+                // 	printf("File size and sent bytes not compatible !!! \n");
+                // }
+                close(file_socket);
+                close(file);
+                //send_file(file_socket, param);
+            }
+            else
+            {
+
+                printf("File opening error.");
+            }
         }
         else
         {
