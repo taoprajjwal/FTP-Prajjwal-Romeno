@@ -74,7 +74,24 @@ int main(int argc, char *argv[])
         }
         else if (strcmp(currentUserInputArray[0], "CD") == 0 && currentUserInputArray[1][0] != '\0')
         {
-            printf("Password command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
+            printf("CD command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
+            fflush(stdout);
+            char response[RESPONSE_SIZE]; //string to hold the server esponse
+            char *commandStringP1 = strcat(currentUserInputArray[0], " ");
+            char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
+            printf("Command sent -> %s \n", commandString);
+            send(srv_socket, commandString, strlen(commandString), 0);
+            int n = recv(srv_socket, response, sizeof(response), 0);
+            if (n > 0)
+            {
+                printf("%s", response);
+            }
+
+            fflush(stdout);
+        }
+        else if (strcmp(currentUserInputArray[0], "LS") == 0 && currentUserInputArray[1][0] == '\0')
+        {
+            printf("LS command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
             fflush(stdout);
             char response[RESPONSE_SIZE]; //string to hold the server esponse
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
