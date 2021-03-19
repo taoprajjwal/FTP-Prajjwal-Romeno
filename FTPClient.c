@@ -72,24 +72,30 @@ int main(int argc, char *argv[])
 
         if (strcmp(currentUserInputArray[0], "USER") == 0 && currentUserInputArray[1][0] != '\0')
         {
-            printf("Username command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
             fflush(stdout);
             char response[RESPONSE_SIZE]; //string to hold the server esponse
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
             char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
-            printf("Command sent -> %s \n", commandString);
             send(srv_socket, commandString, strlen(commandString), 0);
             int n = recv(srv_socket, response, sizeof(response), 0);
+
             if (n > 0)
             {
-                printf("%s", response);
+                int responseCode = atoi(response);
+                if (responseCode == 430)
+                {
+                    printf("Username does not exist, please try again.\n", response);
+                }
+                if (responseCode == 331)
+                {
+                    printf("Username found! Now send the password with the PASS command.\n", response);
+                }
             }
 
             fflush(stdout);
         }
         else if (strcmp(currentUserInputArray[0], "PASS") == 0 && currentUserInputArray[1][0] != '\0')
         {
-            printf("Password command ---> %s --- %s \n", currentUserInputArray[0], currentUserInputArray[1]);
             fflush(stdout);
             char response[RESPONSE_SIZE]; //string to hold the server esponse
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
@@ -99,6 +105,19 @@ int main(int argc, char *argv[])
             int n = recv(srv_socket, response, sizeof(response), 0);
             if (n > 0)
             {
+                int responseCode = atoi(response);
+                if (responseCode == 430)
+                {
+                    printf("Wrong password. Try again.\n", response);
+                }
+                if (responseCode == 503)
+                {
+                    printf("Please enter username first using the USER command.\n", response);
+                }
+                if (responseCode == 230)
+                {
+                    printf("Authenticated!\n", response);
+                }
                 printf("%s", response);
             }
 
