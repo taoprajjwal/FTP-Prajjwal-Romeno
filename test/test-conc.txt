@@ -1,0 +1,35 @@
+USER coolkat42
+PASS 1234
+USER foo
+PASS bar
+CD Desktop
+LS
+GET 1000000.csv
+GET a.zip
+-------------
+USER prajjwal
+PASS hello
+USER foo
+PASS bar
+CD Documents
+LS
+GET 100000.csv
+GET a.zip
+---------------
+USER project
+PASS muse
+USER foo
+PASS bar
+CD Videos
+LS
+GET 10000.csv
+GET a.zip
+---------------
+USER abcd
+PASS cde
+USER foo
+PASS bar
+CD Pictures
+LS
+GET 1000.csv
+GET a.zip
