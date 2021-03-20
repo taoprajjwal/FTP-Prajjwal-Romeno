@@ -58,6 +58,9 @@ Transfer a file from the server to the client. The file must exist in the curren
 
 Transfer a file from the client to the server. The file must exist in the current working directory on the client.
 
+#### EXIT
+Exits the client program. The only way to exit the server is to send a SIGINT through CTRL-C
+
 # Implementation Details
 
 ### Concurrency
