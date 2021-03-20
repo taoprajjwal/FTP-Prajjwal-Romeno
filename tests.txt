@@ -1,3 +1,9 @@
+# Testing
+
+The program was tested numerous times using all the commands in different combinations and orders. The PUT and GET commands were specifically tested with numerous file sizes as can be seen in the test folder, we have 1000 line files (1000.csv) to 1 million line files (1000000.csv) which were sent from server to client and vice versa and checked to see it's integrity.
+We also tested with a few encoded files such as pngs and pdfs and found that the commands worked well with them too.
+
+
 Sending a file to server, test
 
 USER foo
