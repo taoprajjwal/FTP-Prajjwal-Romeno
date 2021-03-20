@@ -13,12 +13,12 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/sendfile.h>
+#include <string.h>
 #define MAX_STRING_WORD_SIZE 30
 #define MAX_STRING_SIZE 60
 #define RESPONSE_SIZE 100
 #define PATH_MAX 512
 #define MAX_RESPONSE 4096
-
 
 char *fname(char *path)
 {
@@ -75,11 +75,34 @@ int main(int argc, char *argv[])
 
     while (1)
     {
+
+        // char currentUserInputArray[2][MAX_STRING_WORD_SIZE];
+        // //constant loop for getting the user's input commands
+        // printf("ftp > ");
+        // char inputBuffer[256];
+
+        // scanf("%[^\n\r]", inputBuffer);
+        // char *split;
+
+        // split = strtok(inputBuffer, " ");
+        // int numOfCommandArgs = 2;
+
+        // int i = 0;
+
+        // while (split != NULL && i < numOfCommandArgs)
+        // {
+        //     strcpy(currentUserInputArray[i], split);
+        //     split = strtok(NULL, " ");
+        //     i += 1;
+        // }
+        // getch();
         char currentUserInputArray[2][MAX_STRING_WORD_SIZE];
         //constant loop for getting the user's input commands
         printf("ftp > ");
         //scanf("%[^\n]", buffer);
         scanf("%s %[^\n]s", currentUserInputArray[0], currentUserInputArray[1]);
+
+        //scanf("%s %[^\n]s", currentUserInputArray[0], currentUserInputArray[1]);
 
         if (strcmp(currentUserInputArray[0], "USER") == 0 && currentUserInputArray[1][0] != '\0')
         {
@@ -201,9 +224,30 @@ int main(int argc, char *argv[])
 
             fflush(stdout);
         }
-        else if (strcmp(currentUserInputArray[0], "!PWD") == 0 && currentUserInputArray[1][0] == '\0')
+        else if (strcmp(currentUserInputArray[0], "!PWD") == 0 && currentUserInputArray[1][0] != '\0')
         {
-            printf("%s \n", CWD);
+            char cwd[PATH_MAX];
+            if (getcwd(cwd, sizeof(cwd)) != NULL)
+            {
+                printf("Current directory: %s\n", cwd);
+            }
+            else
+            {
+                perror("getcwd() error");
+                return 1;
+            }
+        }
+        else if (strcmp(currentUserInputArray[0], "!LS") == 0 && currentUserInputArray[1][0] != '\0')
+        {
+            char *lsArgs[2];
+
+            lsArgs[0] = "/bin/ls";
+            lsArgs[1] = NULL;
+
+            if (fork() == 0)
+                execv(lsArgs[0], lsArgs);
+            else
+                wait(NULL);
         }
         else if (strcmp(currentUserInputArray[0], "GET") == 0 && currentUserInputArray[1][0] != '\0')
         {
@@ -215,22 +259,21 @@ int main(int argc, char *argv[])
 
             char response[RESPONSE_SIZE]; //string to hold the server esponse
 
-			memset(response, 0, sizeof(response));
-            
-			char response2[20];
+            memset(response, 0, sizeof(response));
+
+            char response2[20];
 
             char *commandStringP1 = strcat(currentUserInputArray[0], " ");
             char *commandString = strcat(commandStringP1, currentUserInputArray[1]);
             send(srv_socket, commandString, strlen(commandString), 0);
-            
-			int n = recv(srv_socket, response, sizeof(response), 0);
 
-            printf("response is %s, int n:%d \n", response,n);
-            
-			if (n > 0 && atoi(response) != 550 && atoi(response) != 503)
+            int n = recv(srv_socket, response, sizeof(response), 0);
+
+            printf("response is %s, int n:%d \n", response, n);
+
+            if (n > 0 && atoi(response) != 550 && atoi(response) != 503)
             {
 
-				
                 int fileSize = atoi(response);
 
                 file = fopen(fname(fileName), "w");
@@ -246,26 +289,25 @@ int main(int argc, char *argv[])
                     return -1;
                 }
                 char buffer[512]; //string to hold the server esponse
-				memset(buffer, 0, sizeof(buffer));
+                memset(buffer, 0, sizeof(buffer));
 
                 printf("Before file response \n");
 
                 int remainingData = fileSize;
                 int len;
 
-				len = recv(file_socket, buffer, 512, 0);
-				printf("Remaining data: %d, Len: %d", remainingData,len);
+                len = recv(file_socket, buffer, 512, 0);
+                printf("Remaining data: %d, Len: %d", remainingData, len);
 
                 while ((remainingData > 0) && (len > 0))
                 {
 
-					printf("Went into the main loop \n");
+                    printf("Went into the main loop \n");
                     float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
                     printf("Download %.2f%% complete\n", percentage);
                     fwrite(buffer, sizeof(char), len, file);
                     remainingData -= len;
                 }
-
 
                 //int n = recv(file_socket, fileResponse, sizeof(fileResponse), 0);
                 printf("Download 100.00%% complete\n");
