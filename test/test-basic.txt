@@ -1,0 +1,23 @@
+PASS
+CD
+USER ell
+USER elliott
+PASS ssmm
+PASS smith
+PWD
+CD Desktop
+LS
+CD ../Documents
+LS
+CD /home/cn/
+GET foo.txt
+CD Documents
+PUT foo.txt
+CD ../
+GET pdf.pdf
+CD Documents
+PUT pdf.pdf
+CD ../
+GET a.zip
+CD Documents
+PUT a.zip
