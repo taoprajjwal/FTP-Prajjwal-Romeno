@@ -1,0 +1,17 @@
+Sending a file to server, test
+
+USER foo
+PASS bar
+!CD test
+LS
+PUT 1000.csv
+LS
+
+Gettiing a file foo.txt from server (if it exists or else get error message), test
+
+USER foo
+PASS bar
+LS
+!LS
+GET foo.txt
+!LS
