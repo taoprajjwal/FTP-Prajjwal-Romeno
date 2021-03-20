@@ -76,31 +76,43 @@ int main(int argc, char *argv[])
     while (1)
     {
 
-        // char currentUserInputArray[2][MAX_STRING_WORD_SIZE];
-        // //constant loop for getting the user's input commands
-        // printf("ftp > ");
-        // char inputBuffer[256];
-
-        // scanf("%[^\n\r]", inputBuffer);
-        // char *split;
-
-        // split = strtok(inputBuffer, " ");
-        // int numOfCommandArgs = 2;
-
-        // int i = 0;
-
-        // while (split != NULL && i < numOfCommandArgs)
-        // {
-        //     strcpy(currentUserInputArray[i], split);
-        //     split = strtok(NULL, " ");
-        //     i += 1;
-        // }
-        // getch();
-        char currentUserInputArray[2][MAX_STRING_WORD_SIZE];
+        char currentUserInputArray[2][128];
         //constant loop for getting the user's input commands
         printf("ftp > ");
+        char inputBuffer[256];
+        char inputBufferCopy[256];
+        int j;
+        fgets(inputBuffer, sizeof(inputBuffer), stdin);
+        sscanf(inputBuffer, "%s", &j);
+        //scanf("%[^\n\r]", inputBuffer);
+        strcpy(inputBufferCopy, inputBuffer);
+        fflush(stdin);
+        char *split;
+
+        split = strtok(inputBuffer, " ");
+        int numOfCommandArgs = 2;
+
+        int i = 0;
+
+        while (split != NULL && i < numOfCommandArgs)
+        {
+            strcpy(currentUserInputArray[i], split);
+            split = strtok(NULL, " ");
+            i += 1;
+        }
+        //printf("command 1 : %s -- command 2 : %s -- inputBufferCopy %s -- %d", currentUserInputArray[1], currentUserInputArray[2], inputBufferCopy, i);
+        if (i == 1)
+        {
+            inputBufferCopy[strlen(inputBufferCopy) - 1] = '\0';
+            strcpy(currentUserInputArray[0], inputBufferCopy);
+        }
+
+        // getch();
+        //char currentUserInputArray[2][MAX_STRING_WORD_SIZE];
+        //constant loop for getting the user's input commands
+        //printf("ftp > ");
         //scanf("%[^\n]", buffer);
-        scanf("%s %[^\n]s", currentUserInputArray[0], currentUserInputArray[1]);
+        // scanf("%s %[^\n]s", currentUserInputArray[0], currentUserInputArray[1]);
 
         //scanf("%s %[^\n]s", currentUserInputArray[0], currentUserInputArray[1]);
 
@@ -224,7 +236,7 @@ int main(int argc, char *argv[])
 
             fflush(stdout);
         }
-        else if (strcmp(currentUserInputArray[0], "!PWD") == 0 && currentUserInputArray[1][0] != '\0')
+        else if (strcmp(currentUserInputArray[0], "!PWD") == 0)
         {
             char cwd[PATH_MAX];
             if (getcwd(cwd, sizeof(cwd)) != NULL)
@@ -237,7 +249,7 @@ int main(int argc, char *argv[])
                 return 1;
             }
         }
-        else if (strcmp(currentUserInputArray[0], "!LS") == 0 && currentUserInputArray[1][0] != '\0')
+        else if (strcmp(currentUserInputArray[0], "!LS") == 0)
         {
             char *lsArgs[2];
 
