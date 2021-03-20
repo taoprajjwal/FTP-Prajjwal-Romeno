@@ -2,15 +2,18 @@ Sending a file to server, test
 
 USER foo
 PASS bar
+!PWD
 !CD test
+!PWD
 LS
 PUT 1000.csv
 LS
 
 Gettiing a file foo.txt from server (if it exists or else get error message), test
 
-USER foo
-PASS bar
+USER project
+PASS muse
+PWD
 LS
 !LS
 GET foo.txt
