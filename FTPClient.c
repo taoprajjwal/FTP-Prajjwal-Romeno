@@ -265,9 +265,9 @@ int main(int argc, char *argv[])
         {
             file_socket = socket(AF_INET, SOCK_STREAM, 0);
             FILE *file;
-            printf("currentUserInputArray %s \n", currentUserInputArray[1]);
+            //printf("currentUserInputArray %s \n", currentUserInputArray[1]);
             char *fileName = basename(currentUserInputArray[1]);
-            printf("file is %s \n", fname(fileName));
+            //printf("file is %s \n", fname(fileName));
 
             char response[RESPONSE_SIZE]; //string to hold the server esponse
 
@@ -280,8 +280,12 @@ int main(int argc, char *argv[])
             send(srv_socket, commandString, strlen(commandString), 0);
 
             int n = recv(srv_socket, response, sizeof(response), 0);
-
-            printf("response is %s, int n:%d \n", response, n);
+            if (atoi(response) == 0)
+            {
+                printf("File does not exist in server. \n");
+                continue;
+            }
+            // printf("response is %s, int n:%d \n", response, n);
 
             if (n > 0 && atoi(response) != 550 && atoi(response) != 503)
             {
@@ -303,33 +307,42 @@ int main(int argc, char *argv[])
                 char buffer[512]; //string to hold the server esponse
                 memset(buffer, 0, sizeof(buffer));
 
-                printf("Before file response \n");
-
                 int remainingData = fileSize;
                 int len;
 
                 len = recv(file_socket, buffer, 512, 0);
-                printf("Remaining data: %d, Len: %d", remainingData, len);
+                //printf("Remaining data: %d, Len: %d", remainingData, len);
 
                 while ((remainingData > 0) && (len > 0))
                 {
 
-                    printf("Went into the main loop \n");
+                    //printf("Went into the main loop \n");
                     float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
                     printf("Download %.2f%% complete\n", percentage);
                     fwrite(buffer, sizeof(char), len, file);
                     remainingData -= len;
                 }
+                if (len == 0)
+                {
+                    printf("File not found.\n");
+                }
+                else
+                {
+                    printf("Download 100.00%% complete\n");
+                    printf("File successfully recieved! \n");
+                }
 
-                //int n = recv(file_socket, fileResponse, sizeof(fileResponse), 0);
-                printf("Download 100.00%% complete\n");
-                printf("File %s successfully recieved! \n", fname(fileName));
                 fclose(file);
             }
             //
         }
         else if (strcmp(currentUserInputArray[0], "PUT") == 0 && currentUserInputArray[1][0] != '\0')
         {
+            if (access(currentUserInputArray[1], F_OK) != 0)
+            {
+                printf("File does not exist.\n");
+                continue;
+            }
             file_socket = socket(AF_INET, SOCK_STREAM, 0);
             FILE *file;
             if (file = open(currentUserInputArray[1], O_RDONLY))
@@ -364,7 +377,7 @@ int main(int argc, char *argv[])
                     perror("Connect: ");
                     return -1;
                 }
-                printf("remainingData: %d\n", remainingData);
+                //printf("remainingData: %d\n", remainingData);
                 while (((sent = sendfile(file_socket, file, &offset, BUFSIZ)) > 0) && (remainingData > 0))
                 {
                     int fileSize = st.st_size;
@@ -372,7 +385,16 @@ int main(int argc, char *argv[])
                     printf("Upload %.2f%% complete\n", percentage);
                     remainingData -= sent;
                 }
-                printf("Upload 100.00%% complete\n");
+                if (st.st_size == 0)
+                {
+                    printf("File not found.\n");
+                }
+                else
+                {
+                    printf("Upload 100.00%% complete\n");
+                    printf("File successfully uploaded! \n");
+                }
+
                 // sent = sendfile(file_descript, file, NULL, st.st_size);
 
                 // if (sent <= st.st_size)

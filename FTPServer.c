@@ -146,7 +146,6 @@ void send_file(int file_sd, char *file_path)
 
 	printf("Accept completed \n");
 
-
 	int pid = fork();
 	if (pid < 0)
 	{
@@ -186,7 +185,6 @@ void send_file(int file_sd, char *file_path)
 		wait(NULL);
 	}
 }
-
 
 int connectToFileSocketInServer(int *file_socket, char *ip, int *port)
 {
@@ -554,7 +552,13 @@ int main(int argc, char *argv[])
 
 								//change to the pwd of the client, might have been changed by other connections
 								chdir(clients[i].pwd);
-
+								if (access(param, F_OK) != 0)
+								{
+									printf("File does not exist.\n");
+									strcpy(response, "0");
+									send(clients[i].fd, response, strlen(response), 0);
+									continue;
+								}
 								FILE *file;
 								if (file = open(param, O_RDONLY))
 								{
@@ -606,7 +610,7 @@ int main(int argc, char *argv[])
 							{
 								printf("In child\n");
 								int file_fd = connectToFileSocketInServer(file_socket, argv[1], port);
-								if ( file_fd< 0)
+								if (file_fd < 0)
 								{
 									perror("Connection error: ");
 									return -1;
@@ -618,7 +622,7 @@ int main(int argc, char *argv[])
 								int remainingData = fileSize;
 								int len;
 								printf("Before while loop, file size is %d\n", fileSize);
-								
+
 								while ((remainingData > 0) && ((len = recv(file_fd, buffer, 512, 0)) > 0))
 								{
 									float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
