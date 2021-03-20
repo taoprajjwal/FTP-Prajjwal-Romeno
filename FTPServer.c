@@ -182,7 +182,6 @@ void send_file(int file_sd, char *file_path)
 	}
 	else if (pid > 0)
 	{
-		wait(NULL);
 	}
 }
 
@@ -335,6 +334,12 @@ int main(int argc, char *argv[])
 						printf("Removing %d from the client_list \n", clients[i].fd);
 						FD_CLR(clients[i].fd, &socks);
 						clients[i].fd = -1;
+						clients[i].user_inited = 0;
+						clients[i].authenticated = 0;
+						clients[i].user_id = -1;
+						strcpy(clients[i].name, "");
+						strcpy(clients[i].pass, "");
+						strcpy(clients[i].pwd, DEFAULT_PATH);
 						close(clients[i].fd);
 					}
 
@@ -512,7 +517,7 @@ int main(int argc, char *argv[])
 								if (chdir(param) < 0)
 								{
 									printf("%s does not exists\n", param);
-									strcpy(response, "Path does not exists\n");
+									strcpy(response, "550");
 								}
 
 								else
@@ -531,7 +536,7 @@ int main(int argc, char *argv[])
 
 							else
 							{
-								strcpy(response, "503");
+								strcpy(response, "530");
 							}
 
 							if (send(clients[i].fd, response, strlen(response), 0) < 1)
@@ -583,60 +588,69 @@ int main(int argc, char *argv[])
 
 							else
 							{
-								strcpy(response, "503");
+								strcpy(response, "530");
 								send(clients[i].fd, response, strlen(response), 0);
 							}
 						}
 
 						if (strcmp(command, "PUT") == 0)
 						{
-							//fork("");
-							chdir(clients[i].pwd);
-							int fileSize = atoi(param);
-							FILE *file = fopen(param2, "w");
-							if (file == NULL)
-							{
-								perror("Open file error: ");
-								return -1;
-							}
 
-							int port = atoi(argv[2]) + 1;
-							int pid = fork();
-							if (pid < 0)
-							{
-								perror("Error in forking \n");
-							}
-							else if (pid == 0)
-							{
-								printf("In child\n");
-								int file_fd = connectToFileSocketInServer(file_socket, argv[1], port);
-								if (file_fd < 0)
+							if (clients[i].authenticated == 1) {
+								//fork("");
+								chdir(clients[i].pwd);
+								int fileSize = atoi(param);
+								FILE *file = fopen(param2, "w");
+								if (file == NULL)
 								{
-									perror("Connection error: ");
+									perror("Open file error: ");
 									return -1;
 								}
 
-								printf("After connect to file socket it server\n");
-								char buffer[512]; //string to hold the server esponse
-
-								int remainingData = fileSize;
-								int len;
-								printf("Before while loop, file size is %d\n", fileSize);
-
-								while ((remainingData > 0) && ((len = recv(file_fd, buffer, 512, 0)) > 0))
+								int port = atoi(argv[2]) + 1;
+								int pid = fork();
+								if (pid < 0)
 								{
-									float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
-									printf("Upload %.2f%% complete\n", percentage);
-									printf("Upload %.2f%% complete\n", percentage);
-									fwrite(buffer, sizeof(char), len, file);
-									remainingData -= len;
+									perror("Error in forking \n");
 								}
+								else if (pid == 0)
+								{
+									printf("In child\n");
+									int file_fd = connectToFileSocketInServer(file_socket, argv[1], port);
+									if (file_fd < 0)
+									{
+										perror("Connection error: ");
+										return -1;
+									}
 
-								printf("After while loop\n");
-								exit(0);
+									printf("After connect to file socket it server\n");
+									char buffer[512]; //string to hold the server esponse
+
+									int remainingData = fileSize;
+									int len;
+									printf("Before while loop, file size is %d\n", fileSize);
+
+									while ((remainingData > 0) && ((len = recv(file_fd, buffer, 512, 0)) > 0))
+									{
+										float percentage = (((float)fileSize - (float)remainingData) / ((float)fileSize)) * 100.0;
+										printf("Upload %.2f%% complete\n", percentage);
+										printf("Upload %.2f%% complete\n", percentage);
+										fwrite(buffer, sizeof(char), len, file);
+										remainingData -= len;
+									}
+
+									printf("After while loop\n");
+									exit(0);
+								}
+							}
+							else {
+
+								char response[100];
+								strcpy(response, "530");
+								send(clients[i].fd, response, strlen(response), 0);
 							}
 
-							//send ok to client
+								//send ok to client
 						}
 					}
 				}
